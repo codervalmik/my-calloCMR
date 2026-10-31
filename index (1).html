@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CallLog — Free Call Tracker with Google Sheets Sync</title>
+<meta name="description" content="A free, open call logging tool. Log calls, track distributors, get follow-up reminders — all synced to your own Google Sheet."/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0a0a0f;--surface:#111118;--surface2:#16161f;
+  --border:#1e1e2e;--accent:#00e5a0;--accent2:#005c41;
+  --text:#e8e8f0;--muted:#5a5a7a;--danger:#ff4466;--warn:#ffa040;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;
+  background-image:radial-gradient(ellipse at 20% 10%,#00e5a015 0%,transparent 50%),
+                   radial-gradient(ellipse at 80% 80%,#005c4120 0%,transparent 50%);}
+.page{display:none;min-height:100vh;}
+.page.active{display:block;}
+
+/* ══════════════════════════════════════════
+   LANDING PAGE
+══════════════════════════════════════════ */
+#page-landing{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 24px;text-align:center;min-height:100vh;
+}
+.landing-badge{
+  font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;
+  color:var(--accent);border:1px solid var(--accent2);padding:6px 16px;border-radius:20px;
+  margin-bottom:32px;background:#00e5a008;
+}
+.landing-h1{font-size:clamp(2.8rem,8vw,5rem);font-weight:800;letter-spacing:-2px;line-height:1;margin-bottom:16px;}
+.landing-h1 span{color:var(--accent);}
+.landing-sub{font-size:1.1rem;color:#a0a0c0;max-width:480px;line-height:1.7;margin-bottom:48px;}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-width:680px;width:100%;margin-bottom:48px;}
+.feature{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:left;}
+.feature-icon{font-size:1.4rem;margin-bottom:10px;}
+.feature-title{font-weight:700;font-size:0.9rem;margin-bottom:4px;}
+.feature-desc{font-size:0.78rem;color:var(--muted);line-height:1.5;}
+.cta-group{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.btn-cta{
+  background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:800;
+  font-size:1rem;letter-spacing:0.5px;padding:16px 36px;border:none;border-radius:10px;
+  cursor:pointer;transition:all 0.2s;
+}
+.btn-cta:hover{background:#00ffb3;transform:translateY(-2px);}
+.btn-cta-ghost{
+  background:transparent;color:var(--text);border:1px solid var(--border);
+  font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;padding:16px 36px;
+  border-radius:10px;cursor:pointer;transition:all 0.2s;
+}
+.btn-cta-ghost:hover{border-color:var(--accent2);color:var(--accent);}
+.landing-note{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:24px;letter-spacing:1px;}
+
+/* ══════════════════════════════════════════
+   ONBOARDING (SETUP WIZARD)
+══════════════════════════════════════════ */
+#page-onboarding{padding:40px 24px;}
+.onboard-wrap{max-width:600px;margin:0 auto;}
+.onboard-back{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);cursor:pointer;margin-bottom:32px;display:inline-flex;align-items:center;gap:6px;letter-spacing:1px;}
+.onboard-back:hover{color:var(--accent);}
+.onboard-step-indicator{display:flex;gap:6px;margin-bottom:36px;}
+.step-dot{width:28px;height:4px;border-radius:2px;background:var(--border);transition:background 0.3s;}
+.step-dot.done{background:var(--accent2);}
+.step-dot.active{background:var(--accent);}
+.onboard-step{display:none;}
+.onboard-step.active{display:block;}
+.onboard-step-num{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
+.onboard-title{font-size:1.8rem;font-weight:800;letter-spacing:-0.5px;margin-bottom:10px;}
+.onboard-desc{color:#a0a0c0;font-size:0.9rem;line-height:1.7;margin-bottom:28px;}
+.onboard-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px;}
+.onboard-field{margin-bottom:16px;}
+.onboard-field:last-child{margin-bottom:0;}
+label{display:block;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.83rem;padding:12px 14px;outline:none;transition:border-color 0.2s;}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+.help-text{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);margin-top:6px;line-height:1.7;}
+.help-text a{color:var(--accent);text-decoration:none;}
+.help-text a:hover{text-decoration:underline;}
+.code-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent);line-height:1.8;margin:12px 0;overflow-x:auto;}
+.onboard-nav{display:flex;gap:12px;margin-top:20px;}
+.btn-next{flex:1;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:0.9rem;padding:14px;border:none;border-radius:8px;cursor:pointer;transition:all 0.2s;}
+.btn-next:hover{background:#00ffb3;}
+.btn-prev{background:transparent;color:var(--muted);border:1px solid var(--border);font-family:'DM Mono',monospace;font-size:0.7rem;padding:14px 20px;border-radius:8px;cursor:pointer;letter-spacing:1px;transition:all 0.2s;}
+.btn-prev:hover{border-color:var(--accent2);color:var(--accent);}
+.test-result{font-family:'DM Mono',monospace;font-size:0.72rem;padding:10px 14px;border-radius:8px;margin-top:10px;display:none;align-items:center;gap:8px;}
+.test-result.success{display:flex;background:#00e5a015;color:var(--accent);border:1px solid var(--accent2);}
+.test-result.error{display:flex;background:#ff446615;color:var(--danger);border:1px solid #ff446630;}
+.test-result.loading{display:flex;background:#1e1e2e;color:var(--muted);}
+.copy-btn{font-family:'DM Mono',monospace;font-size:0.6rem;background:var(--accent2);color:var(--accent);border:none;padding:3px 10px;border-radius:4px;cursor:pointer;float:right;margin-top:-2px;letter-spacing:1px;}
+.copy-btn:hover{background:#007a57;}
+
+/* ══════════════════════════════════════════
+   MAIN APP
+══════════════════════════════════════════ */
+#page-app{padding:32px 20px 80px;}
+.container{max-width:840px;margin:0 auto;}
+header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;}
+.logo{font-size:1.6rem;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--accent);}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.count-badge{font-family:'DM Mono',monospace;font-size:0.7rem;background:var(--accent2);color:var(--accent);padding:5px 12px;border-radius:20px;letter-spacing:1px;}
+.sync-info{font-family:'DM Mono',monospace;font-size:0.58rem;color:var(--muted);letter-spacing:1px;}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:22px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;}
+.tab{flex:1;text-align:center;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;padding:10px 4px;border-radius:7px;cursor:pointer;color:var(--muted);transition:all 0.2s;border:none;background:transparent;}
+.tab.active{background:var(--accent);color:#000;font-weight:700;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* Follow-up Banner */
+.followup-banner{margin-bottom:22px;}
+.banner-title{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;}
+.followup-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;}
+.followup-card{background:var(--surface);border-radius:var(--radius);padding:14px 16px;border:1px solid var(--border);position:relative;overflow:hidden;transition:transform 0.15s;}
+.followup-card:hover{transform:translateY(-2px);}
+.followup-card.overdue{border-color:#ff446640;background:#ff44660a;}
+.followup-card.today{border-color:#ffa04060;background:#ffa0400a;}
+.followup-card.soon{border-color:var(--accent2);background:#00e5a008;}
+.followup-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.followup-card.overdue::before{background:var(--danger);}
+.followup-card.today::before{background:var(--warn);}
+.followup-card.soon::before{background:var(--accent);}
+.fc-urgency{font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.fc-urgency.overdue{color:var(--danger);}.fc-urgency.today{color:var(--warn);}.fc-urgency.soon{color:var(--accent);}
+.fc-contact{font-weight:700;font-size:0.86rem;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fc-company{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:3px;}
+.fc-date{font-family:'DM Mono',monospace;font-size:0.63rem;color:var(--muted);margin-bottom:4px;}
+.fc-notes{font-size:0.72rem;color:#8080a0;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.no-followups{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);padding:14px;border:1px dashed var(--border);border-radius:var(--radius);text-align:center;}
+
+/* Card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:18px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2),transparent);}
+
+/* Form */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px;}
+.mb{margin-bottom:13px;}
+textarea{resize:vertical;min-height:86px;line-height:1.6;}
+.help-text-sm{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);margin-top:5px;line-height:1.6;}
+
+/* Autocomplete */
+.ac-wrap{position:relative;}
+.ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:300;background:var(--surface2);border:1px solid var(--accent2);border-radius:8px;display:none;box-shadow:0 8px 32px #00000080;max-height:260px;overflow-y:auto;}
+.ac-dropdown.open{display:block;}
+.ac-item{padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s;}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.hi{background:var(--accent2);}
+.ac-name{font-weight:700;font-size:0.85rem;}
+.ac-company{font-size:0.75rem;color:#a0a0c0;margin-top:1px;}
+.ac-sub{font-family:'DM Mono',monospace;font-size:0.64rem;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap;}
+.ac-last{color:var(--accent);}.ac-area{color:var(--warn);}
+.ac-msg{padding:14px;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-align:center;}
+.sel-dist{margin-top:8px;padding:11px 14px;background:var(--accent2);border-radius:8px;display:none;position:relative;}
+.sel-dist-name{font-weight:700;font-size:0.85rem;}
+.sel-dist-meta{font-family:'DM Mono',monospace;font-size:0.68rem;color:#a0d0c0;margin-top:3px;}
+.sel-dist-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--accent);font-family:'DM Mono',monospace;font-size:0.68rem;}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:0.83rem;letter-spacing:1px;padding:13px 24px;border:none;border-radius:8px;cursor:pointer;transition:all 0.2s;width:100%;justify-content:center;}
+.btn:hover{background:#00ffb3;transform:translateY(-1px);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.btn-sm{background:transparent;color:var(--accent);border:1px solid var(--accent2);font-size:0.64rem;padding:6px 12px;width:auto;letter-spacing:1px;font-family:'DM Mono',monospace;border-radius:6px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all 0.2s;}
+.btn-sm:hover{background:var(--accent2);}
+.btn-outline{background:transparent;color:var(--muted);border:1px solid var(--border);font-size:0.68rem;padding:7px 14px;width:auto;font-family:'DM Mono',monospace;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s;letter-spacing:1px;}
+.btn-outline:hover{border-color:var(--accent2);color:var(--accent);}
+.btn-danger{border-color:#ff446640;color:var(--danger);}
+.btn-danger:hover{background:#ff44660a;}
+.btn-ghost{background:transparent;color:var(--muted);border:none;font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:1px;cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:3px;}
+.btn-ghost:hover{color:var(--accent);}
+
+/* Status */
+.status{font-family:'DM Mono',monospace;font-size:0.7rem;padding:10px 14px;border-radius:8px;margin-top:10px;display:none;align-items:center;gap:8px;}
+.status.success{display:flex;background:#00e5a015;color:var(--accent);border:1px solid var(--accent2);}
+.status.error{display:flex;background:#ff446615;color:var(--danger);border:1px solid #ff446630;}
+.status.loading{display:flex;background:#1e1e2e;color:var(--muted);}
+
+/* Log entries */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.section-title{font-family:'DM Mono',monospace;font-size:0.64rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;}
+.log-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 17px;margin-bottom:9px;display:grid;grid-template-columns:auto 1fr auto;gap:13px;align-items:start;animation:slideIn 0.3s ease;}
+.log-entry:hover{border-color:#2e2e4e;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+.log-dot{width:7px;height:7px;background:var(--accent);border-radius:50%;margin-top:6px;flex-shrink:0;}
+.log-dot.p{background:var(--warn);}
+.log-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.log-name{font-weight:700;font-size:0.87rem;}
+.log-company{font-size:0.76rem;color:#a0a0c0;}
+.log-num{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--accent);}
+.log-date{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);}
+.log-tag{font-family:'DM Mono',monospace;font-size:0.56rem;background:var(--accent2);color:var(--accent);padding:2px 7px;border-radius:4px;}
+.log-notes{font-size:0.81rem;color:#a0a0c0;line-height:1.6;margin-bottom:4px;}
+.log-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px;}
+.log-pill{font-family:'DM Mono',monospace;font-size:0.63rem;padding:2px 8px;border-radius:4px;}
+.log-pill.fu{color:var(--warn);background:#ffa04015;}
+.log-pill.lp{color:var(--accent);background:#00e5a015;}
+.log-pill.area{color:#a080ff;background:#a080ff15;}
+.sync-badge{font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:1px;padding:3px 8px;border-radius:4px;white-space:nowrap;}
+.sync-badge.synced{background:#00e5a015;color:var(--accent);}
+.sync-badge.pending{background:#ffa04015;color:var(--warn);}
+.sync-badge.failed{background:#ff446615;color:var(--danger);}
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;border:1px dashed var(--border);border-radius:var(--radius);}
+
+/* Distributor tab */
+.dist-search-bar{position:relative;margin-bottom:13px;}
+.dist-search-bar input{padding-left:36px;}
+.dist-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}
+.dist-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;gap:13px;}
+.dist-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent2);color:var(--accent);font-weight:800;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dist-info{flex:1;min-width:0;}
+.dist-name{font-weight:700;font-size:0.87rem;margin-bottom:1px;}
+.dist-company{font-size:0.76rem;color:#a0a0c0;margin-bottom:2px;}
+.dist-meta{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;}
+.dist-meta .lp{color:var(--accent);}.dist-meta .area{color:var(--warn);}
+
+/* Settings in-app */
+.settings-section{margin-bottom:20px;}
+.settings-title{font-family:'DM Mono',monospace;font-size:0.64rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;}
+.settings-row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px;}
+
+/* Spinner */
+.spinner{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent2);color:var(--accent);font-family:'DM Mono',monospace;font-size:0.72rem;padding:10px 20px;border-radius:8px;border:1px solid var(--accent);z-index:9999;letter-spacing:1px;animation:slideIn 0.3s ease;pointer-events:none;}
+
+/* Responsive */
+@media(max-width:540px){
+  .grid2{grid-template-columns:1fr;}
+  .settings-row{grid-template-columns:1fr;}
+  .features{grid-template-columns:1fr 1fr;}
+  .cta-group{flex-direction:column;align-items:center;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     PAGE 1: LANDING
+═══════════════════════════════════════ -->
+<div class="page active" id="page-landing">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;min-height:100vh;">
+    <div class="landing-badge">✦ Free &amp; Open Source · No Account Needed</div>
+    <h1 class="landing-h1">Call<span>Log</span></h1>
+    <p style="font-size:1.05rem;color:#a0a0c0;max-width:460px;line-height:1.75;margin-bottom:44px;">
+      Track every sales call. Log notes, follow-ups, and distributor history — all saved directly to <strong style="color:var(--text)">your own Google Sheet</strong>.
+    </p>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">📞</div>
+        <div class="feature-title">Log Calls Fast</div>
+        <div class="feature-desc">Add call notes, categories and follow-up dates in seconds.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🏪</div>
+        <div class="feature-title">Distributor Search</div>
+        <div class="feature-desc">Search your distributor list live from your Google Sheet.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⏰</div>
+        <div class="feature-title">Follow-up Alerts</div>
+        <div class="feature-desc">See overdue and upcoming follow-ups at a glance on top.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Your Data, Your Sheet</div>
+        <div class="feature-desc">Every call syncs to your own Google Sheet. You own everything.</div>
+      </div>
+    </div>
+
+    <div class="cta-group">
+      <button class="btn-cta" onclick="startOnboarding()">Get Started — It's Free →</button>
+      <button class="btn-cta-ghost" onclick="skipToApp()">I'm already set up</button>
+    </div>
+    <p style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);margin-top:20px;letter-spacing:1px;">
+      Takes ~3 minutes to set up · Works in any browser · No sign-up required
+    </p>
+
+    <!-- Privacy & Security Note -->
+    <div style="max-width:600px;width:100%;margin-top:48px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:left;">
+      <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;">🔒 Privacy & Security</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="display:flex;gap:12px;">
+          <div style="font-size:1.1rem;flex-shrink:0">🏠</div>
+          <div>
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:4px;">Stays in your browser</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.6;">Your API key and Sheet ID are stored only in your own browser's local storage. We never see, store or transmit them.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div style="font-size:1.1rem;flex-shrink:0">📊</div>
+          <div>
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:4px;">Your data, your sheet</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.6;">Every call log goes directly to your own Google Sheet. No third-party servers. No database. No middleman.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div style="font-size:1.1rem;flex-shrink:0">🔑</div>
+          <div>
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:4px;">Restrict your API key</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.6;">In Google Cloud Console, restrict your key to <strong style="color:var(--text)">Google Sheets API only</strong>. This limits what the key can do even if it were ever exposed.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div style="font-size:1.1rem;flex-shrink:0">👁</div>
+          <div>
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:4px;">Open source</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.6;">This is a single HTML file. You can open it in any text editor and read every line of code. Nothing is hidden.</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:20px;padding:12px 14px;background:#00e5a008;border:1px solid var(--accent2);border-radius:8px;font-family:'DM Mono',monospace;font-size:0.68rem;color:#a0d0c0;line-height:1.7;">
+        ✦ <strong style="color:var(--accent)">Tip:</strong> After creating your API key in Google Cloud, go to <strong style="color:var(--text)">Credentials → Edit Key → API restrictions</strong> and select <strong style="color:var(--text)">Google Sheets API</strong>. This is the single best thing you can do to keep your key safe.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PAGE 2: ONBOARDING WIZARD
+═══════════════════════════════════════ -->
+<div class="page" id="page-onboarding">
+  <div class="onboard-wrap">
+    <div class="onboard-back" onclick="showPage('landing')">← Back</div>
+
+    <!-- Step dots -->
+    <div class="onboard-step-indicator">
+      <div class="step-dot active" id="dot-0"></div>
+      <div class="step-dot" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+    </div>
+
+    <!-- STEP 1: Create Google Sheet -->
+    <div class="onboard-step active" id="step-0">
+      <div class="onboard-step-num">Step 1 of 4</div>
+      <h2 class="onboard-title">Create your Google Sheet</h2>
+      <p class="onboard-desc">CallLog saves everything to a Google Sheet you own. First, let's create the sheet with the right structure.</p>
+
+      <div class="onboard-card">
+        <p style="font-size:0.85rem;color:#a0a0c0;line-height:1.7;margin-bottom:14px;">
+          1. Open <a href="https://sheets.google.com" target="_blank" style="color:var(--accent)">sheets.google.com</a> and create a new spreadsheet.<br>
+          2. Create <strong style="color:var(--text)">two tabs</strong> at the bottom — name them <code style="background:#1e1e2e;color:var(--accent);padding:2px 6px;border-radius:4px;">Calls</code> and <code style="background:#1e1e2e;color:var(--accent);padding:2px 6px;border-radius:4px;">Distributors</code>.<br>
+          3. In each tab, add the header row below in <strong style="color:var(--text)">Row 1</strong>:
+        </p>
+
+        <p style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Calls tab — Row 1:</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyText('Date\tContact\tNumber\tCompany\tArea\tCategory\tNotes\tFollow-up\tLast Purchase\tSynced At', this)">Copy</button>
+          Date &nbsp;|&nbsp; Contact &nbsp;|&nbsp; Number &nbsp;|&nbsp; Company &nbsp;|&nbsp; Area &nbsp;|&nbsp; Category &nbsp;|&nbsp; Notes &nbsp;|&nbsp; Follow-up &nbsp;|&nbsp; Last Purchase &nbsp;|&nbsp; Synced At
+        </div>
+
+        <p style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;margin-top:14px;">Distributors tab — Row 1:</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyText('Name\tPhone\tCompany\tArea\tLast Purchase', this)">Copy</button>
+          Name &nbsp;|&nbsp; Phone &nbsp;|&nbsp; Company &nbsp;|&nbsp; Area &nbsp;|&nbsp; Last Purchase
+        </div>
+        <p style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);margin-top:10px;">After adding headers, fill in your distributors in the Distributors tab — one per row.</p>
+      </div>
+
+      <div class="onboard-nav">
+        <button class="btn-next" onclick="goStep(1)">Done, next →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Share Sheet -->
+    <div class="onboard-step" id="step-1">
+      <div class="onboard-step-num">Step 2 of 4</div>
+      <h2 class="onboard-title">Share your Sheet</h2>
+      <p class="onboard-desc">CallLog needs write access to your sheet to save call logs.</p>
+
+      <div class="onboard-card">
+        <p style="font-size:0.85rem;color:#a0a0c0;line-height:1.8;">
+          1. In your Google Sheet, click <strong style="color:var(--text)">Share</strong> (top right).<br>
+          2. Under <em>General access</em>, change to <strong style="color:var(--accent)">Anyone with the link</strong>.<br>
+          3. Set the role to <strong style="color:var(--accent)">Editor</strong>.<br>
+          4. Click <strong style="color:var(--text)">Done</strong>.
+        </p>
+        <div style="margin-top:16px;padding:12px 14px;background:#ffa04010;border:1px solid #ffa04030;border-radius:8px;font-size:0.78rem;color:#ffa040;line-height:1.6;">
+          ⚠ This lets anyone with your Sheet URL edit it. Keep your Sheet URL private — only you will have it.
+        </div>
+      </div>
+
+      <div class="onboard-nav">
+        <button class="btn-prev" onclick="goStep(0)">← Back</button>
+        <button class="btn-next" onclick="goStep(2)">Done, next →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Get API Key -->
+    <div class="onboard-step" id="step-2">
+      <div class="onboard-step-num">Step 3 of 4</div>
+      <h2 class="onboard-title">Get a Google API Key</h2>
+      <p class="onboard-desc">This lets the app read and write to your sheet. Takes about 2 minutes.</p>
+
+      <div class="onboard-card">
+        <p style="font-size:0.85rem;color:#a0a0c0;line-height:1.8;">
+          1. Go to <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent)">console.cloud.google.com</a>.<br>
+          2. Create a new project (or use an existing one).<br>
+          3. Go to <strong style="color:var(--text)">APIs &amp; Services → Enable APIs</strong> → search for <strong style="color:var(--accent)">Google Sheets API</strong> → Enable it.<br>
+          4. Go to <strong style="color:var(--text)">APIs &amp; Services → Credentials</strong> → <strong style="color:var(--accent)">+ Create Credentials → API Key</strong>.<br>
+          5. Copy the API key shown.
+        </p>
+        <div style="margin-top:14px;padding:12px 14px;background:#00e5a008;border:1px solid var(--accent2);border-radius:8px;font-size:0.78rem;color:#a0d0c0;line-height:1.7;">
+          🔒 <strong style="color:var(--accent)">Recommended:</strong> After copying your key, click <strong style="color:var(--text)">Edit</strong> on it → under <strong style="color:var(--text)">API restrictions</strong>, select <strong style="color:var(--text)">Google Sheets API only</strong>. This means even if someone finds your key, they can only access Sheets — nothing else in your Google account.
+        </div>
+      </div>
+
+      <div class="onboard-nav">
+        <button class="btn-prev" onclick="goStep(1)">← Back</button>
+        <button class="btn-next" onclick="goStep(3)">I have my API key →</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Enter Config & Test -->
+    <div class="onboard-step" id="step-3">
+      <div class="onboard-step-num">Step 4 of 4</div>
+      <h2 class="onboard-title">Connect your Sheet</h2>
+      <p class="onboard-desc">Paste in your details below. Everything is saved locally in your browser — never sent anywhere else.</p>
+
+      <div class="onboard-card">
+        <div class="onboard-field">
+          <label>Spreadsheet ID</label>
+          <input type="text" id="ob-sheetId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"/>
+          <p class="help-text">From your Sheet URL: docs.google.com/spreadsheets/d/<strong>[COPY THIS PART]</strong>/edit</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;">
+          <div class="onboard-field">
+            <label>Calls Tab Name</label>
+            <input type="text" id="ob-sheetName" placeholder="Calls" value="Calls"/>
+          </div>
+          <div class="onboard-field">
+            <label>Distributors Tab Name</label>
+            <input type="text" id="ob-distTab" placeholder="Distributors" value="Distributors"/>
+          </div>
+        </div>
+        <div class="onboard-field">
+          <label>Google API Key</label>
+          <input type="password" id="ob-apiKey" placeholder="AIzaSy…"/>
+        </div>
+        <button class="btn" id="testBtn" onclick="testConnection()" style="margin-top:4px;">🔌 Test Connection</button>
+        <div class="test-result" id="testResult"></div>
+      </div>
+
+      <div class="onboard-nav">
+        <button class="btn-prev" onclick="goStep(2)">← Back</button>
+        <button class="btn-next" id="finishBtn" onclick="finishSetup()" disabled>Launch CallLog →</button>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6;">
+        Your API key and Sheet ID stay in your browser only. We never see them.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PAGE 3: MAIN APP
+═══════════════════════════════════════ -->
+<div class="page" id="page-app">
+  <div class="container">
+
+    <header>
+      <div>
+        <div class="logo">Call<span>Log</span></div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);margin-top:3px;letter-spacing:1px;">your calls · your sheet</div>
+      </div>
+      <div class="header-right">
+        <div class="count-badge" id="countBadge">0 calls</div>
+        <div class="sync-info" id="distSyncInfo">distributors: not loaded</div>
+      </div>
+    </header>
+
+    <!-- Follow-up Banner -->
+    <div class="followup-banner">
+      <div class="banner-title">⏰ Upcoming Follow-ups</div>
+      <div class="followup-cards" id="followupCards">
+        <div class="no-followups">No follow-ups scheduled yet</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('log')">📞 Log Call</button>
+      <button class="tab" onclick="switchTab('history')">📋 History</button>
+      <button class="tab" onclick="switchTab('distributors')">🏪 Distributors</button>
+      <button class="tab" onclick="switchTab('settings')">⚙ Settings</button>
+    </div>
+
+    <!-- LOG CALL TAB -->
+    <div class="tab-panel active" id="tab-log">
+      <div class="card">
+        <div class="mb">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+            <label style="margin:0">Distributor — Search from Sheet</label>
+            <button class="btn-outline" onclick="fetchDists(true)" id="refreshBtn">↻ Refresh</button>
+          </div>
+          <div class="ac-wrap">
+            <input type="text" id="distSearch" placeholder="Type name, company, area or number…" oninput="onAcInput()" onblur="hideAc()" onkeydown="onAcKey(event)" autocomplete="off"/>
+            <div class="ac-dropdown" id="acDrop"></div>
+          </div>
+          <div class="sel-dist" id="selDist">
+            <span class="sel-dist-name" id="selDistName"></span>
+            <span class="sel-dist-clear" onclick="clearSelDist()">✕</span>
+            <div class="sel-dist-meta" id="selDistMeta"></div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div><label>Contact Name</label><input type="text" id="cName" placeholder="e.g. Ramesh Kumar"/></div>
+          <div><label>Phone Number</label><input type="text" id="cNum" placeholder="e.g. +91 98765 43210"/></div>
+        </div>
+        <div class="grid2">
+          <div><label>Company / Shop</label><input type="text" id="cCompany" placeholder="e.g. Ramesh Traders"/></div>
+          <div><label>Area / Region</label><input type="text" id="cArea" placeholder="e.g. South Chennai"/></div>
+        </div>
+        <div class="grid2">
+          <div><label>Date & Time Called</label><input type="datetime-local" id="callDate"/></div>
+          <div><label>Category</label>
+            <select id="category">
+              <option>General</option><option>Order</option><option>Follow-up</option>
+              <option>Support</option><option>Payment</option><option>Complaint</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb"><label>Notes — What They Mentioned</label>
+          <textarea id="callNotes" placeholder="They mentioned stock running low, want 50 units next week, asked about new pricing…"></textarea>
+        </div>
+        <div class="grid2">
+          <div><label>Follow-up Date</label><input type="date" id="followupDate"/></div>
+          <div><label>Last Purchase Date</label><input type="date" id="lastPurchase"/></div>
+        </div>
+        <button class="btn" onclick="logCall()">+ Log This Call</button>
+        <div class="status" id="statusMsg"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div class="tab-panel" id="tab-history">
+      <div class="section-header">
+        <span class="section-title">All Calls</span>
+        <button class="btn-sm btn-danger" onclick="clearAllCalls()">Clear All</button>
+      </div>
+      <div id="callLog"></div>
+    </div>
+
+    <!-- DISTRIBUTORS TAB -->
+    <div class="tab-panel" id="tab-distributors">
+      <div class="section-header">
+        <span class="section-title" id="distCount">— distributors</span>
+        <button class="btn-outline" onclick="fetchDists(true)">↻ Refresh from Sheet</button>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">
+        Manage your distributors directly in the <strong style="color:var(--accent)">Distributors</strong> tab in Google Sheets, then hit Refresh.
+      </p>
+      <div class="dist-search-bar">
+        <span class="dist-icon">🔍</span>
+        <input type="text" id="distListQ" placeholder="Search by name, company, area…" oninput="renderDistTab()"/>
+      </div>
+      <div id="distList"></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="card">
+        <div class="settings-title">Google Sheets Config</div>
+        <div class="settings-row">
+          <div><label>Spreadsheet ID</label><input type="text" id="s-sheetId"/></div>
+          <div><label>Calls Tab</label><input type="text" id="s-sheetName" placeholder="Calls"/></div>
+        </div>
+        <div class="settings-row">
+          <div><label>Distributors Tab</label><input type="text" id="s-distTab" placeholder="Distributors"/></div>
+          <div><label>Google API Key</label><input type="password" id="s-apiKey"/></div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn" style="flex:1" onclick="saveSettingsCfg()">Save Config</button>
+          <button class="btn-outline" onclick="testConnectionSettings()">Test</button>
+        </div>
+        <div class="status" id="settingsStatus"></div>
+      </div>
+
+      <div class="card" style="margin-top:0">
+        <div class="settings-title">Danger Zone</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn-sm btn-danger" onclick="resetAll()">Reset Everything</button>
+          <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);">Clears all local data and returns to setup</span>
+        </div>
+      </div>
+
+      <div style="text-align:center;padding:24px 0;font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);line-height:1.8;">
+        CallLog is free to use.<br>
+        Your data goes to <em>your</em> Google Sheet — not ours.<br>
+        <button class="btn-ghost" onclick="showPage('landing')">← Back to home</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let calls = JSON.parse(localStorage.getItem('callLog') || '[]');
+let cfg   = JSON.parse(localStorage.getItem('callConfig') || '{}');
+let dists = [];
+let selId = null, acHi = -1;
+let connectionTested = false;
+
+// ── Init ───────────────────────────────────────────────────────
+(function init() {
+  // If already configured, go straight to app
+  if (cfg.sheetId && cfg.apiKey) {
+    showPage('app');
+    loadAppCfgFields();
+    document.getElementById('callDate').value = nowLocal();
+    renderAll();
+    fetchDists(false);
+  } else {
+    showPage('landing');
+  }
+})();
+
+function nowLocal() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+
+// ── Page routing ───────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+}
+
+function startOnboarding() { showPage('onboarding'); goStep(0); }
+
+function skipToApp() {
+  if (cfg.sheetId && cfg.apiKey) {
+    showPage('app');
+    loadAppCfgFields();
+    document.getElementById('callDate').value = nowLocal();
+    renderAll();
+    fetchDists(false);
+  } else {
+    startOnboarding();
+    goStep(3); // jump to config step
+  }
+}
+
+// ── Onboarding ─────────────────────────────────────────────────
+let currentStep = 0;
+function goStep(n) {
+  document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    dot.classList.toggle('active', i === n);
+    dot.classList.toggle('done', i < n);
+  }
+  currentStep = n;
+}
+
+async function testConnection() {
+  const sheetId = document.getElementById('ob-sheetId').value.trim();
+  const apiKey  = document.getElementById('ob-apiKey').value.trim();
+  const distTab = document.getElementById('ob-distTab').value.trim() || 'Distributors';
+
+  if (!sheetId || !apiKey) {
+    showTestResult('Please fill in all fields.', 'error'); return;
+  }
+  showTestResult('Testing connection… ', 'loading');
+  document.getElementById('testBtn').disabled = true;
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(distTab + '!A1:E1')}?key=${apiKey}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error?.message || 'Connection failed');
+    }
+    showTestResult('✓ Connected successfully! Your sheet is ready.', 'success');
+    connectionTested = true;
+    document.getElementById('finishBtn').disabled = false;
+  } catch(e) {
+    showTestResult('✗ ' + e.message + ' — check your Sheet ID, API key, and that the sheet is shared as Editor.', 'error');
+    connectionTested = false;
+    document.getElementById('finishBtn').disabled = true;
+  } finally {
+    document.getElementById('testBtn').disabled = false;
+  }
+}
+
+function showTestResult(msg, type) {
+  const el = document.getElementById('testResult');
+  el.className = 'test-result ' + type;
+  el.innerHTML = type === 'loading' ? `<span class="spinner"></span>${msg}` : msg;
+}
+
+function finishSetup() {
+  cfg = {
+    sheetId:     document.getElementById('ob-sheetId').value.trim(),
+    sheetName:   document.getElementById('ob-sheetName').value.trim() || 'Calls',
+    distTabName: document.getElementById('ob-distTab').value.trim() || 'Distributors',
+    apiKey:      document.getElementById('ob-apiKey').value.trim(),
+  };
+  localStorage.setItem('callConfig', JSON.stringify(cfg));
+  showPage('app');
+  loadAppCfgFields();
+  document.getElementById('callDate').value = nowLocal();
+  renderAll();
+  fetchDists(false);
+  showToast('🎉 Setup complete! Welcome to CallLog.');
+}
+
+// ── App Tabs ───────────────────────────────────────────────────
+function switchTab(name) {
+  const names = ['log','history','distributors','settings'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'history') renderCalls();
+  if (name === 'distributors') { fetchDists(false); renderDistTab(); }
+}
+
+// ── Fetch Distributors ─────────────────────────────────────────
+async function fetchDists(manual) {
+  if (!cfg.sheetId || !cfg.apiKey || !cfg.distTabName) {
+    setDistInfo('⚠ not configured'); return;
+  }
+  setDistInfo('⏳ loading…');
+  const btn = document.getElementById('refreshBtn');
+  if (btn) btn.disabled = true;
+
+  const range = encodeURIComponent(cfg.distTabName + '!A2:E1000');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${range}?key=${cfg.apiKey}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API Error'); }
+    const data = await res.json();
+    dists = (data.values || []).filter(r => r[0]?.trim()).map((r,i) => ({
+      id: 'd'+i, name:(r[0]||'').trim(), number:(r[1]||'').trim(),
+      company:(r[2]||'').trim(), area:(r[3]||'').trim(), lastPurchase:(r[4]||'').trim()
+    }));
+    const t = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    setDistInfo(`✓ ${dists.length} loaded · ${t}`);
+    renderDistTab();
+    if (manual) showToast(`✓ ${dists.length} distributors loaded`);
+  } catch(e) {
+    setDistInfo('✗ failed to load');
+    if (manual) showToast('✗ Failed: ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function setDistInfo(msg) {
+  const el = document.getElementById('distSyncInfo');
+  if (el) el.textContent = 'distributors: ' + msg;
+}
+
+// ── Autocomplete ───────────────────────────────────────────────
+function onAcInput() {
+  selId = null;
+  document.getElementById('selDist').style.display = 'none';
+  const q = document.getElementById('distSearch').value.trim().toLowerCase();
+  const dd = document.getElementById('acDrop');
+  if (!q) { dd.classList.remove('open'); return; }
+
+  if (!dists.length) {
+    dd.innerHTML = '<div class="ac-msg">Loading distributors… <span class="spinner"></span></div>';
+    dd.classList.add('open');
+    fetchDists(false).then(() => onAcInput());
+    return;
+  }
+
+  const matches = dists.filter(d =>
+    d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q) ||
+    d.number.toLowerCase().includes(q) || d.area.toLowerCase().includes(q)
+  ).slice(0,10);
+
+  if (!matches.length) {
+    dd.innerHTML = `<div class="ac-msg">No match found — add them in your Distributors sheet</div>`;
+  } else {
+    dd.innerHTML = matches.map(d => `
+      <div class="ac-item" data-id="${d.id}" onmousedown="pickDist('${d.id}')">
+        <div class="ac-name">${esc(d.name)}</div>
+        ${d.company ? `<div class="ac-company">${esc(d.company)}</div>` : ''}
+        <div class="ac-sub">
+          ${d.number ? `<span>${esc(d.number)}</span>` : ''}
+          ${d.area ? `<span class="ac-area">📍 ${esc(d.area)}</span>` : ''}
+          ${d.lastPurchase ? `<span class="ac-last">🛒 ${fmtDate(d.lastPurchase)}</span>` : '<span>No purchase on record</span>'}
+        </div>
+      </div>`).join('');
+  }
+  dd.classList.add('open'); acHi = -1;
+}
+
+function onAcKey(e) {
+  const items = document.querySelectorAll('#acDrop .ac-item');
+  if (e.key==='ArrowDown'){acHi=Math.min(acHi+1,items.length-1);hiAc(items);e.preventDefault();}
+  else if(e.key==='ArrowUp'){acHi=Math.max(acHi-1,0);hiAc(items);e.preventDefault();}
+  else if(e.key==='Enter'&&acHi>=0){items[acHi].onmousedown();e.preventDefault();}
+  else if(e.key==='Escape') hideAc();
+}
+function hiAc(items){items.forEach((el,i)=>el.classList.toggle('hi',i===acHi));}
+function hideAc(){setTimeout(()=>document.getElementById('acDrop').classList.remove('open'),160);}
+
+function pickDist(id) {
+  const d = dists.find(x => x.id===id); if(!d) return;
+  selId = id;
+  document.getElementById('distSearch').value = '';
+  document.getElementById('acDrop').classList.remove('open');
+  document.getElementById('cName').value    = d.name;
+  document.getElementById('cNum').value     = d.number;
+  document.getElementById('cCompany').value = d.company;
+  document.getElementById('cArea').value    = d.area;
+  if (d.lastPurchase) document.getElementById('lastPurchase').value = d.lastPurchase;
+  document.getElementById('selDistName').textContent = d.name + (d.company ? ' · ' + d.company : '');
+  const meta = [d.number, d.area ? '📍 '+d.area : '', d.lastPurchase ? '🛒 Last buy: '+fmtDate(d.lastPurchase) : ''].filter(Boolean).join('  ·  ');
+  document.getElementById('selDistMeta').textContent = meta;
+  document.getElementById('selDist').style.display = 'block';
+}
+
+function clearSelDist() {
+  selId = null;
+  document.getElementById('selDist').style.display = 'none';
+  ['cName','cNum','cCompany','cArea','lastPurchase'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── Log a Call ─────────────────────────────────────────────────
+async function logCall() {
+  const name    = document.getElementById('cName').value.trim();
+  const num     = document.getElementById('cNum').value.trim();
+  const company = document.getElementById('cCompany').value.trim();
+  const area    = document.getElementById('cArea').value.trim();
+  const date    = document.getElementById('callDate').value;
+  const notes   = document.getElementById('callNotes').value.trim();
+  const fu      = document.getElementById('followupDate').value;
+  const lp      = document.getElementById('lastPurchase').value;
+  const cat     = document.getElementById('category').value;
+  if (!name||!date||!notes){showStatus('Please fill in Name, Date and Notes.','error');return;}
+
+  const entry = {id:Date.now(),name,number:num,company,area,date,notes,followup:fu,lastPurchase:lp,category:cat,syncStatus:'pending',syncedAt:null};
+  calls.unshift(entry); saveCalls(); clearForm(); renderAll();
+  showStatus('Call logged! Syncing…','loading');
+  await syncSheet(entry);
+}
+
+async function syncSheet(entry) {
+  if (!cfg.sheetId||!cfg.apiKey){setSync(entry.id,'pending');showStatus('⚠ Not configured. Go to Settings.','error');return;}
+  const row=[fmtDT(entry.date),entry.name,entry.number||'',entry.company||'',entry.area||'',entry.category,entry.notes,entry.followup||'',entry.lastPurchase||'',new Date().toLocaleString()];
+  const url=`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${encodeURIComponent(cfg.sheetName||'Calls')}:append?valueInputOption=USER_ENTERED&key=${cfg.apiKey}`;
+  try {
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:[row]})});
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'API Error');}
+    setSync(entry.id,'synced'); showStatus('✓ Synced to your Google Sheet!','success');
+  } catch(e){setSync(entry.id,'failed');showStatus('✗ Sync failed: '+e.message,'error');}
+}
+
+async function retrySingle(id){
+  const e=calls.find(c=>c.id===id);if(!e)return;
+  e.syncStatus='pending';saveCalls();renderAll();await syncSheet(e);
+}
+function setSync(id,status){
+  const e=calls.find(c=>c.id===id);
+  if(e){e.syncStatus=status;if(status==='synced')e.syncedAt=new Date().toLocaleString();saveCalls();renderAll();}
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function renderAll(){
+  document.getElementById('countBadge').textContent=`${calls.length} call${calls.length!==1?'s':''}`;
+  renderFollowups(); renderCalls();
+}
+
+function renderFollowups(){
+  const c=document.getElementById('followupCards');
+  const today=new Date();today.setHours(0,0,0,0);
+  const up=calls.filter(x=>x.followup).map(x=>{
+    const d=new Date(x.followup);d.setHours(0,0,0,0);
+    return{...x,diff:Math.round((d-today)/86400000)};
+  }).filter(x=>x.diff<=30).sort((a,b)=>a.diff-b.diff);
+  if(!up.length){c.innerHTML='<div class="no-followups">No follow-ups scheduled yet</div>';return;}
+  c.innerHTML=up.map(x=>{
+    let u,l;
+    if(x.diff<0){u='overdue';l=`${Math.abs(x.diff)}d overdue`;}
+    else if(x.diff===0){u='today';l='Today!';}
+    else{u='soon';l=`In ${x.diff} day${x.diff>1?'s':''}`;}
+    return`<div class="followup-card ${u}"><div class="fc-urgency ${u}">${l}</div><div class="fc-contact">${esc(x.name)}</div>${x.company?`<div class="fc-company">${esc(x.company)}</div>`:''}<div class="fc-date">Called: ${fmtDT(x.date)}</div><div class="fc-notes">${esc(x.notes)}</div></div>`;
+  }).join('');
+}
+
+function renderCalls(){
+  const c=document.getElementById('callLog');
+  if(!calls.length){c.innerHTML='<div class="empty-state"><div style="font-size:2rem;margin-bottom:10px;opacity:.3">📞</div>No calls logged yet</div>';return;}
+  c.innerHTML=calls.map(x=>`
+    <div class="log-entry">
+      <div class="log-dot ${x.syncStatus!=='synced'?'p':''}"></div>
+      <div>
+        <div class="log-meta">
+          <span class="log-name">${esc(x.name)}</span>
+          ${x.company?`<span class="log-company">${esc(x.company)}</span>`:''}
+          ${x.number?`<span class="log-num">${esc(x.number)}</span>`:''}
+          <span class="log-date">${fmtDT(x.date)}</span>
+          <span class="log-tag">${esc(x.category)}</span>
+        </div>
+        <div class="log-notes">${esc(x.notes)}</div>
+        <div class="log-pills">
+          ${x.area?`<span class="log-pill area">📍 ${esc(x.area)}</span>`:''}
+          ${x.followup?`<span class="log-pill fu">⏰ ${fmtDate(x.followup)}</span>`:''}
+          ${x.lastPurchase?`<span class="log-pill lp">🛒 ${fmtDate(x.lastPurchase)}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <span class="sync-badge ${x.syncStatus}">${x.syncStatus==='synced'?'✓ synced':x.syncStatus==='failed'?'✗ failed':'⏳ pending'}</span>
+        ${x.syncStatus!=='synced'?`<button class="btn-sm" onclick="retrySingle(${x.id})">Retry</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function renderDistTab(){
+  const q=(document.getElementById('distListQ')?.value||'').toLowerCase();
+  const f=dists.filter(d=>d.name.toLowerCase().includes(q)||d.company.toLowerCase().includes(q)||d.area.toLowerCase().includes(q)||d.number.toLowerCase().includes(q));
+  document.getElementById('distCount').textContent=`${f.length} distributor${f.length!==1?'s':''}`;
+  const c=document.getElementById('distList');
+  if(!dists.length){c.innerHTML='<div class="empty-state">No distributors loaded yet.<br>Configure Settings and hit Refresh.</div>';return;}
+  if(!f.length){c.innerHTML='<div class="empty-state">No matches found</div>';return;}
+  c.innerHTML=f.map(d=>`
+    <div class="dist-entry">
+      <div class="dist-avatar">${esc(d.name.charAt(0).toUpperCase())}</div>
+      <div class="dist-info">
+        <div class="dist-name">${esc(d.name)}</div>
+        ${d.company?`<div class="dist-company">${esc(d.company)}</div>`:''}
+        <div class="dist-meta">
+          ${d.number?`<span>${esc(d.number)}</span>`:''}
+          ${d.area?`<span class="area">📍 ${esc(d.area)}</span>`:''}
+          ${d.lastPurchase?`<span class="lp">🛒 Last buy: ${fmtDate(d.lastPurchase)}</span>`:'<span>No purchase recorded</span>'}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Settings ───────────────────────────────────────────────────
+function loadAppCfgFields(){
+  if(cfg.sheetId)     document.getElementById('s-sheetId').value=cfg.sheetId;
+  if(cfg.sheetName)   document.getElementById('s-sheetName').value=cfg.sheetName;
+  if(cfg.distTabName) document.getElementById('s-distTab').value=cfg.distTabName;
+  if(cfg.apiKey)      document.getElementById('s-apiKey').value=cfg.apiKey;
+}
+function saveSettingsCfg(){
+  cfg={sheetId:document.getElementById('s-sheetId').value.trim(),sheetName:document.getElementById('s-sheetName').value.trim()||'Calls',distTabName:document.getElementById('s-distTab').value.trim()||'Distributors',apiKey:document.getElementById('s-apiKey').value.trim()};
+  localStorage.setItem('callConfig',JSON.stringify(cfg));
+  const el=document.getElementById('settingsStatus');
+  el.className='status success';el.textContent='✓ Saved!';
+  setTimeout(()=>{el.className='status';},3000);
+  fetchDists(false);
+}
+async function testConnectionSettings(){
+  const el=document.getElementById('settingsStatus');
+  el.className='status loading';el.innerHTML='<span class="spinner"></span>Testing…';
+  const sheetId=document.getElementById('s-sheetId').value.trim();
+  const apiKey=document.getElementById('s-apiKey').value.trim();
+  const distTab=document.getElementById('s-distTab').value.trim()||'Distributors';
+  try{
+    const res=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(distTab+'!A1')}?key=${apiKey}`);
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message);}
+    el.className='status success';el.textContent='✓ Connection successful!';
+  }catch(e){el.className='status error';el.textContent='✗ '+e.message;}
+  setTimeout(()=>{el.className='status';},5000);
+}
+function resetAll(){
+  if(confirm('This will clear all your local data and return to the setup screen. Are you sure?')){
+    localStorage.clear(); location.reload();
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function saveCalls(){localStorage.setItem('callLog',JSON.stringify(calls));}
+function clearAllCalls(){if(confirm('Clear all call history?')){calls=[];saveCalls();renderAll();}}
+function clearForm(){
+  ['cName','cNum','cCompany','cArea','callNotes','followupDate','lastPurchase'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('callDate').value=nowLocal();
+  document.getElementById('category').value='General';
+  document.getElementById('distSearch').value='';
+  document.getElementById('selDist').style.display='none';
+  selId=null;
+}
+function fmtDT(s){if(!s)return'';return new Date(s).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});}
+function fmtDate(s){if(!s)return'';return new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});}
+function showStatus(msg,type){
+  const el=document.getElementById('statusMsg');
+  el.className=`status ${type}`;
+  el.innerHTML=type==='loading'?`<span class="spinner"></span>${msg}`:msg;
+  if(type!=='loading')setTimeout(()=>{el.className='status';},4500);
+}
+function showToast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+function copyText(text,btn){
+  navigator.clipboard.writeText(text).then(()=>{const orig=btn.textContent;btn.textContent='Copied!';setTimeout(()=>{btn.textContent=orig;},2000);});
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
